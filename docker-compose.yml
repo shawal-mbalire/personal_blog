@@ -1,0 +1,41 @@
+version: "3.9"
+
+services:
+  web:
+    build: ./blog_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./blog_backend:/app
+    depends_on:
+      - db
+    environment:
+      - POSTGRES_NAME=blog_db
+      - POSTGRES_USER=blog_user
+      - POSTGRES_PASSWORD=blog_password
+      - POSTGRES_HOST=db
+
+  db:
+    image: postgres:14
+    ports:
+      - "5432:5432" # Only expose if needed externally
+    environment:
+      - POSTGRES_DB=blog_db
+      - POSTGRES_USER=blog_user
+      - POSTGRES_PASSWORD=blog_password
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  frontend:
+    build: ./blog_frontend
+    ports:
+      - "4200:4200"
+    depends_on:
+      - web
+    volumes:
+        - ./blog_frontend:/app
+        - /app/node_modules
+    command: ng serve --host 0.0.0.0
+
+volumes:
+  db_data:
