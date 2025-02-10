@@ -1,41 +1,47 @@
-version: "3.9"
+version: '3.8'
 
 services:
-  web:
-    build: ./blog_backend
+  backend:
+    image: python:slim
     ports:
       - "8000:8000"
     volumes:
       - ./blog_backend:/app
+    working_dir: /app
     depends_on:
       - db
-    environment:
-      - POSTGRES_NAME=blog_db
-      - POSTGRES_USER=blog_user
-      - POSTGRES_PASSWORD=blog_password
-      - POSTGRES_HOST=db
+    env_file:
+      - ./blog_backend/.env
+    command: >
+      sh -c "pip install -r requirements.txt &&
+             python manage.py migrate &&
+             python manage.py createsuperuser --no-input &&
+             uvicorn blog_backend.asgi:application --host 0.0.0.0 --port 8000 --workers 4"
 
   db:
-    image: postgres:14
+    image: postgres:latest
     ports:
       - "5432:5432" # Only expose if needed externally
-    environment:
-      - POSTGRES_DB=blog_db
-      - POSTGRES_USER=blog_user
-      - POSTGRES_PASSWORD=blog_password
+    env_file:
+      - ./blog_backend/.env
     volumes:
       - db_data:/var/lib/postgresql/data
 
   frontend:
-    build: ./blog_frontend
+    image: node:18-alpine
     ports:
       - "4200:4200"
+    working_dir: /app
+    volumes: 
+      - ./blog_frontend:/app
     depends_on:
-      - web
-    volumes:
-        - ./blog_frontend:/app
-        - /app/node_modules
-    command: ng serve --host 0.0.0.0
+      - backend
+    env_file:
+      - ./blog_frontend/.env
+    command: >
+      sh -c "npm install -g @angular/cli pnpm &&
+             pnpm install &&
+             ng serve --host 0.0.0.0"
 
 volumes:
   db_data:
